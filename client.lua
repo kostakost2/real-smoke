@@ -13,6 +13,7 @@ local activeFx = {}
 local coreLoaded = false
 local activeCount = 0
 local worldFireSmoke = {}
+local explosionFx = {}  -- Track explosion aftermath effects for cleanup
 
 -- ============================================================================
 -- Debug Helper
@@ -85,10 +86,37 @@ end
 
 local function StopFx(handle)
     if handle and DoesParticleFxLoopedExist(handle) then
-        StopParticleFxLooped(handle, false)
-        RemoveParticleFx(handle, false)
+        StopParticleFxLooped(handle, false)  -- Also handles removal internally
         activeCount = activeCount - 1
         if activeCount < 0 then activeCount = 0 end
+    end
+end
+
+-- Recount active effects to fix potential desync from GTA-killed effects
+local function ValidateActiveCount()
+    local realCount = 0
+    for _, handles in pairs(activeFx) do
+        for _, h in ipairs(handles) do
+            if DoesParticleFxLoopedExist(h) then
+                realCount = realCount + 1
+            end
+        end
+    end
+    for _, entry in pairs(worldFireSmoke) do
+        for _, h in ipairs(entry.handles) do
+            if DoesParticleFxLoopedExist(h) then
+                realCount = realCount + 1
+            end
+        end
+    end
+    for h, _ in pairs(explosionFx) do
+        if DoesParticleFxLoopedExist(h) then
+            realCount = realCount + 1
+        end
+    end
+    if activeCount ~= realCount then
+        DebugPrint(("activeCount corrected: %d -> %d"):format(activeCount, realCount))
+        activeCount = realCount
     end
 end
 
@@ -143,6 +171,7 @@ local function ApplyFireSmoke(vehicle)
     -- Smoke layer delayed to let GTA's own fire effects build first
     Citizen.SetTimeout(cfg.delay, function()
         if not activeFx[vehicle] then return end
+        if not DoesEntityExist(vehicle) then return end
         local s1 = StartLoopedOnEntity("ent_amb_smoke_foundry", vehicle, 0.0, 0.0, cfg.offsetZ, cfg.scale * mult, cfg.alpha * mult)
         if s1 then table.insert(activeFx[vehicle], s1) end
     end)
@@ -348,15 +377,16 @@ Citizen.CreateThread(function()
 
                         -- Lingering smoke column
                         Citizen.SetTimeout(800, function()
-                            local handles = {}
                             local h1 = StartLoopedAtCoord("ent_amb_smoke_foundry", coords.x, coords.y, coords.z, cfg.scale * mult, cfg.alpha * mult)
-                            if h1 then table.insert(handles, h1) end
-
-                            Citizen.SetTimeout(cfg.duration * 1000, function()
-                                for _, h in ipairs(handles) do
-                                    StopFx(h)
-                                end
-                            end)
+                            if h1 then
+                                explosionFx[h1] = true  -- Track for cleanup on resource stop
+                                Citizen.SetTimeout(cfg.duration * 1000, function()
+                                    if explosionFx[h1] then
+                                        StopFx(h1)
+                                        explosionFx[h1] = nil
+                                    end
+                                end)
+                            end
                         end)
                     end
                 elseif engineHealth > -4000 then
@@ -374,6 +404,20 @@ Citizen.CreateThread(function()
 end)
 
 -- ============================================================================
+-- Periodic Active Count Validation
+-- ============================================================================
+
+Citizen.CreateThread(function()
+    while not RealSmoke do Citizen.Wait(500) end
+    if not RealSmoke.Enabled then return end
+
+    while true do
+        Citizen.Wait(30000)  -- Validate every 30 seconds
+        ValidateActiveCount()
+    end
+end)
+
+-- ============================================================================
 -- Cleanup on Resource Stop
 -- ============================================================================
 
@@ -385,6 +429,10 @@ AddEventHandler('onClientResourceStop', function(resource)
         for key, _ in pairs(worldFireSmoke) do
             CleanupWorldFire(key)
         end
+        for handle, _ in pairs(explosionFx) do
+            StopFx(handle)
+        end
+        explosionFx = {}
         if coreLoaded then
             RemoveNamedPtfxAsset("core")
         end
