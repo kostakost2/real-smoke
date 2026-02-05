@@ -10,12 +10,13 @@ RealSmoke = {
     -- Performance & Distance
     CheckInterval = 1000,       -- ms between vehicle fire scans
     WorldFireInterval = 2000,   -- ms between world fire scans
-    MaxDistance = 500.0,         -- max distance (meters) to render smoke effects
+    MaxDistance = 1000.0,        -- max distance (meters) to render smoke effects
     MAX_ACTIVE_FX = 30,         -- hard cap on simultaneous particle effects
 
     -- Feature toggles
     ExplosionSmoke = true,      -- secondary explosion + lingering smoke on vehicle destruction
     WorldFireSmoke = true,      -- smoke on non-vehicle fires (molotovs, gas stations, etc.)
+    GasStationSmoke = true,     -- enhanced smoke for gas station fires (detects nearby gas pumps)
     MassScaling = true,         -- heavier vehicles produce more smoke
 
     -- Smoke appearance
@@ -35,6 +36,14 @@ RealSmoke = {
         scale = 0.8,
         alpha = 0.4,
         offsetZ = 1.0,
+    },
+    GasStation = {
+        -- Gas/petrol fires burn hotter and produce thick black smoke
+        scale = 2.0,            -- larger primary smoke column
+        alpha = 0.7,            -- denser/darker smoke (real fuel fires are very opaque)
+        offsetZ = 1.5,          -- slightly higher base
+        secondaryScale = 3.0,   -- second column for towering effect
+        secondaryAlpha = 0.5,   -- upper column slightly more transparent
     },
     Explosion = {
         scale = 1.2,

@@ -15,6 +15,19 @@ local activeCount = 0
 local worldFireSmoke = {}
 local explosionFx = {}  -- Track explosion aftermath effects for cleanup
 
+-- Gas pump prop model hashes for gas station fire detection
+local gasPumpHashes = {
+    GetHashKey("prop_gas_pump_1a"),
+    GetHashKey("prop_gas_pump_1b"),
+    GetHashKey("prop_gas_pump_1c"),
+    GetHashKey("prop_gas_pump_1d"),
+    GetHashKey("prop_gas_pump_old1"),
+    GetHashKey("prop_gas_pump_old2"),
+    GetHashKey("prop_gas_pump_old3"),
+    GetHashKey("prop_vintage_pump"),
+    GetHashKey("prop_gas_pump_1d_lod"),
+}
+
 -- ============================================================================
 -- Debug Helper
 -- ============================================================================
@@ -213,6 +226,17 @@ local function CoordKey(x, y, z)
     return math.floor(x / 2) .. "_" .. math.floor(y / 2) .. "_" .. math.floor(z / 2)
 end
 
+-- Check if coordinates are near a gas pump (gas station fire)
+local function IsNearGasPump(x, y, z, radius)
+    for _, hash in ipairs(gasPumpHashes) do
+        local pump = GetClosestObjectOfType(x, y, z, radius, hash, false, false, false)
+        if pump ~= 0 then
+            return true
+        end
+    end
+    return false
+end
+
 local function ApplyWorldFireSmoke(x, y, z)
     local key = CoordKey(x, y, z)
     if worldFireSmoke[key] then
@@ -220,11 +244,24 @@ local function ApplyWorldFireSmoke(x, y, z)
         return
     end
 
-    local cfg = RealSmoke.WorldFire
-    worldFireSmoke[key] = { handles = {}, lastSeen = GetGameTimer() }
+    -- Check if this is a gas station fire
+    local isGasStation = RealSmoke.GasStationSmoke and IsNearGasPump(x, y, z, 15.0)
+    local cfg = isGasStation and RealSmoke.GasStation or RealSmoke.WorldFire
+
+    worldFireSmoke[key] = { handles = {}, lastSeen = GetGameTimer(), isGasStation = isGasStation }
+
+    if isGasStation then
+        DebugPrint(("Gas station fire detected at %.1f, %.1f, %.1f"):format(x, y, z))
+    end
 
     local s1 = StartLoopedAtCoord("ent_amb_smoke_foundry", x, y, z + cfg.offsetZ, cfg.scale, cfg.alpha)
     if s1 then table.insert(worldFireSmoke[key].handles, s1) end
+
+    -- Gas station fires get a second, larger smoke column for thick black smoke effect
+    if isGasStation and cfg.secondaryScale then
+        local s2 = StartLoopedAtCoord("ent_amb_smoke_foundry", x, y, z + cfg.offsetZ + 3.0, cfg.secondaryScale, cfg.secondaryAlpha or cfg.alpha)
+        if s2 then table.insert(worldFireSmoke[key].handles, s2) end
+    end
 end
 
 local function CleanupWorldFire(key)
