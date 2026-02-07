@@ -66,5 +66,5 @@ RealSmoke = {
     },
 
     -- Debug — set to true to print messages to F8 console
-    Debug = false,
+    Debug = true,
 }
