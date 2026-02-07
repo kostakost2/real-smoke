@@ -327,9 +327,7 @@ Citizen.CreateThread(function()
         if RealSmoke.Debug then
             local loopEnd = GetGameTimer()
             local loopTime = loopEnd - loopStart
-            if loopTime > 0 or vehicleCount > 0 then
-                DebugPrint(("Vehicle scan: %.2fms (%d vehicles, %d active FX)"):format(loopTime, vehicleCount, activeCount))
-            end
+            DebugPrint(("Vehicle scan: %.2fms (%d vehicles, %d active FX)"):format(loopTime, vehicleCount, activeCount))
         end
     end
 end)
@@ -386,9 +384,7 @@ Citizen.CreateThread(function()
             local loopTime = loopEnd - loopStart
             local activeWorldFires = 0
             for _ in pairs(worldFireSmoke) do activeWorldFires = activeWorldFires + 1 end
-            if loopTime > 0 or activeWorldFires > 0 then
-                DebugPrint(("World fire scan: %.2fms (%d active fires)"):format(loopTime, activeWorldFires))
-            end
+            DebugPrint(("World fire scan: %.2fms (%d active fires)"):format(loopTime, activeWorldFires))
         end
     end
 end)
