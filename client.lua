@@ -460,7 +460,7 @@ Citizen.CreateThread(function()
 end)
 
 -- ============================================================================
--- Periodic Active Count Validation
+-- Periodic Active Count Validation + Entity Despawn Cleanup
 -- ============================================================================
 
 Citizen.CreateThread(function()
@@ -468,8 +468,20 @@ Citizen.CreateThread(function()
     if not RealSmoke.Enabled then return end
 
     while true do
-        Citizen.Wait(30000)  -- Validate every 30 seconds
-        ValidateActiveCount()
+        Citizen.Wait(100)  -- Check every 100ms for despawned entities
+
+        -- Clean up effects for despawned vehicles
+        for entity, _ in pairs(activeFx) do
+            if type(entity) == "number" and not DoesEntityExist(entity) then
+                CleanupEntity(entity)
+                DebugPrint(("Cleaned up smoke from despawned entity %d"):format(entity))
+            end
+        end
+
+        -- Validate count every 30 seconds
+        if GetGameTimer() % 30000 < 100 then
+            ValidateActiveCount()
+        end
     end
 end)
 
