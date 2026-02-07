@@ -289,8 +289,10 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(RealSmoke.CheckInterval)
 
+        local loopStart = GetGameTimer()
         local playerPos = GetEntityCoords(PlayerPedId())
         local vehicles = GetGamePool('CVehicle')
+        local vehicleCount = #vehicles
 
         for _, vehicle in ipairs(vehicles) do
             if DoesEntityExist(vehicle) then
@@ -320,6 +322,15 @@ Citizen.CreateThread(function()
                 CleanupEntity(entity)
             end
         end
+
+        -- Performance logging
+        if RealSmoke.Debug then
+            local loopEnd = GetGameTimer()
+            local loopTime = loopEnd - loopStart
+            if loopTime > 0 or vehicleCount > 0 then
+                DebugPrint(("Vehicle scan: %.2fms (%d vehicles, %d active FX)"):format(loopTime, vehicleCount, activeCount))
+            end
+        end
     end
 end)
 
@@ -336,6 +347,7 @@ Citizen.CreateThread(function()
     while true do
         Citizen.Wait(RealSmoke.WorldFireInterval)
 
+        local loopStart = GetGameTimer()
         local playerPos = GetEntityCoords(PlayerPedId())
         local searchRadius = math.min(RealSmoke.MaxDistance, 100.0)
         local foundFires = {}
@@ -365,6 +377,17 @@ Citizen.CreateThread(function()
         for key, entry in pairs(worldFireSmoke) do
             if now - entry.lastSeen > 5000 then
                 CleanupWorldFire(key)
+            end
+        end
+
+        -- Performance logging
+        if RealSmoke.Debug then
+            local loopEnd = GetGameTimer()
+            local loopTime = loopEnd - loopStart
+            local activeWorldFires = 0
+            for _ in pairs(worldFireSmoke) do activeWorldFires = activeWorldFires + 1 end
+            if loopTime > 0 or activeWorldFires > 0 then
+                DebugPrint(("World fire scan: %.2fms (%d active fires)"):format(loopTime, activeWorldFires))
             end
         end
     end
